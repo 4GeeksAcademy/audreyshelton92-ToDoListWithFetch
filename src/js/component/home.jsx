@@ -1,20 +1,72 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 
 const App = () => {
   const [userInput, setUserInput] = useState("");
   const [userList, setUserList] = useState([]);
+  const [userCreated, setUserCreated] = useState(false);
+  const userName = "audreyshelton";
 
-  const addToDo = () => {
-    if (userInput !== "") {
-      setUserList([...userList, userInput]);
+  
+  useEffect(() => {
+    const checkOrCreateUser = async () => {
+      const response = await fetch(`https://playground.4geeks.com/todo/api/users/${userName}`);
+
+      if (response.ok) {
+        setUserCreated(true);
+        await fetchTodos();
+      } else {
+        await fetch(`https://playground.4geeks.com/todo/api/users/${userName}`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          }
+        });
+        setUserCreated(true);
+      }
+    };
+
+    checkOrCreateUser();
+  }, []);
+
+  
+  const fetchTodos = async () => {
+    const response = await fetch(`https://playground.4geeks.com/todo/api/todos/user/${userName}`);
+    const todos = await response.json();
+    setUserList(todos);
+  };
+
+
+  const addToDo = async () => {
+    if (userInput !== "" && userCreated) {
+      await fetch(`https://playground.4geeks.com/todo/api/todos/user/${userName}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify([{ label: userInput, done: false }])
+      });
+
+      await fetchTodos();
+    
       setUserInput("");
     }
   };
 
-  const deleteToDo = (index) => {
-    setUserList(userList.filter((_, i) => i !== index));
+  
+  const deleteToDo = async (index) => {
+    const todoToDelete = userList[index];
+    await fetch(`https://playground.4geeks.com/todo/api/todos/user/${userName}`, {
+      method: "DELETE",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify([todoToDelete])
+    });
+
+    await fetchTodos();
   };
 
+  //makes Enter key add a todo(not working? need to fix)
   const handleKeyPress = (e) => {
     if (e.key === "Enter") {
       addToDo();
@@ -41,7 +93,7 @@ const App = () => {
               onClick={() => deleteToDo(index)} 
               style={{ cursor: 'pointer' }}
             >
-              {todo}
+              {todo.label}
             </li>
           ))}
         </ul>
